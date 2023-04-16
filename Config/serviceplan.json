@@ -1,0 +1,62 @@
+{
+	"$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+    "parameters": {
+      "projectName": {
+        "type": "String",
+        "defaultValue": "funchubdemo"
+      },
+			"environmentCode": {
+				"type": "String",
+				"allowedValues": [
+					"dev",
+					"tst",
+					"pre",
+					"prod"
+				],
+				"defaultValue": "dev"
+			},
+			"locationCode": {
+				"type": "String",
+				"allowedValues": [
+					"use2",
+					"usc"
+				],
+				"defaultValue": "usc"
+			}
+    },
+    "variables": {
+			"tags": {
+				"Owner": "jay@jaybrummels.com",
+				"Project": "Azure Function Event Hub Demo"
+			},
+      "spName": "[concat('plan-', parameters('projectName'), '-', parameters('environmentCode'), '-', parameters('locationCode'))]"
+    },
+    "resources":[
+        {
+            "type": "Microsoft.Web/serverfarms",
+            "apiVersion": "2018-02-01",
+            "name": "[variables('spName')]",
+            "location": "[resourceGroup().location]",
+            "tags": "[variables('tags')]",
+            "sku": {
+								"name": "Y1",
+								"tier": "Dynamic",
+								"size": "Y1",
+								"family": "Y",
+								"capacity": 0
+            },
+            "kind": "functionapp",
+            "properties": {
+								"perSiteScaling": false,
+								"maximumElasticWorkerCount": 1,
+								"isSpot": false,
+								"reserved": false,
+								"isXenon": false,
+								"hyperV": false,
+								"targetWorkerCount": 0,
+								"targetWorkerSizeId": 0
+            }
+        }
+    ]
+}

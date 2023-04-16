@@ -1,0 +1,14 @@
+﻿<Project>
+  <PropertyGroup>
+    <Copyright>©2023 Jay Brummels. All rights reserved.</Copyright>
+    <PackageProjectUrl>https://github.com/unscrum/strategy-kickoff-then-scale</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/unscrum/strategy-kickoff-then-scale</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <Authors>Jay Brummels</Authors>
+    <Company>Jay Brummels</Company>
+    <Product>Jay Brummels - Demo Function app using NETCOREAPP7.0 and EventHub</Product>
+    <NeutralLanguage>en-US</NeutralLanguage>
+    <AssemblyVersion>1.0.0</AssemblyVersion>
+    <FileVersion>1.0.0</FileVersion>
+  </PropertyGroup>
+</Project>

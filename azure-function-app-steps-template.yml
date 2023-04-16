@@ -1,0 +1,47 @@
+parameters:
+  - name: env_short_name
+    type: string
+  - name: location_code
+    type: string
+  - name: azure_resource_manager_connection
+    type: string
+  - name: azure_resource_group_name
+    type: string
+  - name: subscription_id
+    type: string
+  - name: location
+    type: string
+  - name: run_type
+    type: string
+steps:
+  - task: AzureResourceManagerTemplateDeployment@3
+    displayName: Deploy Function App
+    condition: ne('${{ parameters.run_type }}', 'Code Only')
+    inputs:
+      deploymentScope: 'Resource Group'
+      azureResourceManagerConnection: ${{parameters.azure_resource_manager_connection}}
+      subscriptionId: '${{parameters.subscription_id}}'
+      action: 'Create Or Update Resource Group'
+      resourceGroupName: '${{parameters.azure_resource_group_name}}'
+      location: ${{parameters.location}}
+      templateLocation: 'Linked artifact'
+      csmFile: '$(Pipeline.Workspace)/Config/function.json'
+      overrideParameters: '-environmentCode ${{parameters.env_short_name}} -locationCode ${{parameters.location_code}}'
+      deploymentMode: 'Incremental'
+  - task: ArchiveFiles@2
+    displayName: ZIP the publish Artifact
+    condition: ne('${{ parameters.run_type }}', 'Config Only')
+    inputs:
+      rootFolderOrFile: '$(Pipeline.Workspace)/publish'
+      includeRootFolder: false
+      archiveType: 'zip'
+      archiveFile: '$(Pipeline.Workspace)/publish.zip'
+      replaceExistingArchive: true
+  - task: AzureCLI@2
+    displayName: Deploy App via ZIP Deploy
+    condition: ne('${{ parameters.run_type }}', 'Config Only')
+    inputs:
+      azureSubscription: ${{parameters.azure_resource_manager_connection}}
+      scriptType: 'bash'
+      scriptLocation: 'inlineScript'
+      inlineScript: 'az functionapp deployment source config-zip -g ${{parameters.azure_resource_group_name}} -n func-demoapp-funchubdemo-${{parameters.env_short_name}}-${{parameters.location_code}} --src $(Pipeline.Workspace)/publish.zip'

@@ -1,0 +1,174 @@
+{
+	"$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"projectName": {
+			"type": "String",
+			"defaultValue": "funchubdemo"
+		},
+		"environmentCode": {
+			"type": "String",
+			"allowedValues": [
+				"dev",
+				"tst",
+				"pre",
+				"prod"
+			],
+			"defaultValue": "dev"
+		},
+		"locationCode": {
+			"type": "String",
+			"allowedValues": [
+				"use2",
+				"usc"
+			],
+			"defaultValue": "usc"
+		}
+	},
+	"variables": {
+		"tags": {
+			"Owner": "jay@jaybrummels.com",
+			"Project": "Azure Function Event Hub Demo"
+		},
+		"eventHubName": "[concat('eh-', parameters('projectName'), '-', parameters('environmentCode'),'-', parameters('locationCode'))]",
+		"storageName": "[concat(parameters('projectName'), parameters('environmentCode'), parameters('locationCode'))]",
+		"spName": "[concat('plan-', parameters('projectName'), '-', parameters('environmentCode'),'-', parameters('locationCode'))]",
+		"fnName": "[concat('func-demoapp-', parameters('projectName'), '-', parameters('environmentCode'),'-', parameters('locationCode'))]",
+		"aiName": "[concat('ai-', parameters('projectName'), '-', parameters('environmentCode'),'-', parameters('locationCode'))]"
+	},
+	"resources": [{
+			"type": "Microsoft.Web/sites",
+			"apiVersion": "2018-11-01",
+			"name": "[variables('fnName')]",
+			"location": "[resourceGroup().location]",
+			"tags": "[variables('tags')]",
+			"kind": "functionapp",
+			"properties": {
+				"enabled": true,
+				"hostNameSslStates": [{
+						"name": "[concat(variables('fnName'), '.azurewebsites.net')]",
+						"sslState": "Disabled",
+						"hostType": "Standard"
+					},
+					{
+						"name": "[concat(variables('fnName'), '.scm.azurewebsites.net')]",
+						"sslState": "Disabled",
+						"hostType": "Repository"
+					}
+				],
+				"serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('spName'))]",
+				"reserved": false,
+				"isXenon": false,
+				"hyperV": false,
+				"siteConfig": {
+					"appSettings": [{
+							"name": "FUNCTIONS_WORKER_RUNTIME",
+							"value": "dotnet-isolated",
+							"slotSetting": false
+						},
+						{
+							"name": "FUNCTIONS_EXTENSION_VERSION",
+							"value": "~4",
+							"slotSetting": false
+						},
+						{
+							"name": "APPINSIGHTS_INSTRUMENTATIONKEY",
+							"value": "[reference(resourceId('Microsoft.Insights/components', variables('aiName')), '2014-04-01').InstrumentationKey]",
+							"slotSetting": false
+						},
+						{
+							"name": "APPLICATIONINSIGHTS_CONNECTION_STRING",
+							"value": "[concat('InstrumentationKey=', reference(resourceId('Microsoft.Insights/components', variables('aiName')), '2014-04-01').InstrumentationKey)]",
+							"slotSetting": false
+						},
+						{
+							"name": "AzureWebJobsStorage",
+							"value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('storageName') ,';EndpointSuffix=core.windows.net;AccountKey=',listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('storageName')), '2021-02-01').keys[0].value)]",
+							"slotSetting": false
+						},
+						{
+							"name": "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING",
+							"value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('storageName') ,';EndpointSuffix=core.windows.net;AccountKey=',listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('storageName')), '2021-02-01').keys[0].value)]",
+							"slotSetting": false
+						},
+						{
+							"name": "HttpHubReadWriteConnection",
+							"value": "[listKeys(resourceId('Microsoft.EventHub/namespaces/eventhubs/authorizationRules', variables('eventHubName'), 'http-hub', 'HttpHubListenerSender'), '2017-04-01').primaryConnectionString]",
+							"slotSetting": false
+						},
+						{
+							"name": "AlphaHubWriteConnection",
+							"value": "[listKeys(resourceId('Microsoft.EventHub/namespaces/eventhubs/authorizationRules', variables('eventHubName'), 'alpha-hub', 'AlphaSender'), '2017-04-01').primaryConnectionString]",
+							"slotSetting": false
+						}
+					]
+				},
+				"scmSiteAlsoStopped": false,
+				"clientAffinityEnabled": false,
+				"clientCertEnabled": false,
+				"hostNamesDisabled": false,
+				"containerSize": 1536,
+				"dailyMemoryTimeQuota": 0,
+				"httpsOnly": true,
+				"redundancyMode": "None"
+			}
+		},
+		{
+			"type": "Microsoft.Web/sites/config",
+			"apiVersion": "2018-11-01",
+			"name": "[concat(variables('fnName'), '/web')]",
+			"location": "Central US",
+			"dependsOn": [
+				"[resourceId('Microsoft.Web/sites', variables('fnName'))]"
+			],
+			"properties": {
+				"numberOfWorkers": 1,
+				"defaultDocuments": [],
+				"netFrameworkVersion": "v7.0",
+				"phpVersion": "5.6",
+				"requestTracingEnabled": false,
+				"remoteDebuggingEnabled": false,
+				"httpLoggingEnabled": false,
+				"logsDirectorySizeLimit": 35,
+				"detailedErrorLoggingEnabled": false,
+				"publishingUsername": "[concat('$', variables('fnName'))]",
+				"azureStorageAccounts": {},
+				"scmType": "None",
+				"use32BitWorkerProcess": false,
+				"webSocketsEnabled": false,
+				"alwaysOn": true,
+				"managedPipelineMode": "Integrated",
+				"virtualApplications": [{
+						"virtualPath": "/",
+						"physicalPath": "site\\wwwroot",
+						"preloadEnabled": false
+				}],
+				"loadBalancing": "LeastRequests",
+				"experiments": {
+						"rampUpRules": []
+				},
+				"autoHealEnabled": false,
+				"localMySqlEnabled": false,
+				"ipSecurityRestrictions": [{
+						"ipAddress": "Any",
+						"action": "Allow",
+						"priority": 1,
+						"name": "Allow all",
+						"description": "Allow all access"
+				}],
+				"scmIpSecurityRestrictions": [{
+						"ipAddress": "Any",
+						"action": "Allow",
+						"priority": 1,
+						"name": "Allow all",
+						"description": "Allow all access"
+				}],
+				"scmIpSecurityRestrictionsUseMain": false,
+				"http20Enabled": true,
+				"minTlsVersion": "1.2",
+				"ftpsState": "Disabled",
+				"reservedInstanceCount": 0
+			}
+		}
+	]
+}

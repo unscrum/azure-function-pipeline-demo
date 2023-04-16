@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net7.0</TargetFramework>
+        <AzureFunctionsVersion>V4</AzureFunctionsVersion>
+        <OutputType>Exe</OutputType>
+        <WarningsAsErrors />
+        <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+        <OutputPath>../../bin/$(Configuration)</OutputPath>
+        <NoWarn>1701;1702;</NoWarn>
+        <IsPackable>false</IsPackable>
+        <RootNamespace>Jay.FuncHubDemo</RootNamespace>
+        <AssemblyName>Jay.FuncHubDemo.Microservice</AssemblyName>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+        <DefineConstants>DEBUG;TRACE</DefineConstants>
+    </PropertyGroup>
+    <ItemGroup>
+      <PackageReference Include="Microsoft.Azure.Functions.Worker" Version="1.13.0" />
+      <PackageReference Include="Microsoft.Azure.Functions.Worker.Sdk" Version="1.9.0" />
+      <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.EventHubs" Version="5.2.0" />
+      <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Http" Version="3.0.13" />
+      <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Timer" Version="4.2.0" />
+      <PackageReference Include="SecurityCodeScan.VS2019" Version="5.6.7" PrivateAssets="all">
+        <PrivateAssets>all</PrivateAssets>
+        <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      </PackageReference>
+    </ItemGroup>
+    <ItemGroup>
+        <None Update="host.json">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None Update="local.settings.json">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+            <CopyToPublishDirectory>Never</CopyToPublishDirectory>
+        </None>
+    </ItemGroup>
+</Project>

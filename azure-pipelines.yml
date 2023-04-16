@@ -1,0 +1,143 @@
+trigger:
+  branches:
+    include:
+      - master
+  paths:
+    exclude:
+      - Documentation/
+
+name: '$(Build.DefinitionName)_$(Year:yyyy).$(Month).$(DayOfMonth)$(Rev:.r)'
+
+parameters:
+  - name: run_type
+    displayName: Choose Run Type
+    type: string
+    default: Full
+    values:
+      - Full
+      - Config Only
+      - Code Only
+
+stages:
+  - stage: BuildTestPublish
+    displayName: Build Test Publish
+    jobs:
+      - job: BuildTestPublish
+        displayName: Build Test Publish
+        condition: ne('${{ parameters.run_type }}', 'Config Only')
+        pool:
+          vmImage: 'ubuntu-latest'
+        steps:
+          - task: DotNetCoreCLI@2
+            displayName: Restore
+            inputs:
+              command: 'restore'
+              projects: '**/*.csproj'
+              feedsToUse: 'config'
+              nugetConfigPath: 'NuGet.Config'
+              verbosityRestore: 'Minimal'
+          - task: DotNetCoreCLI@2
+            displayName: Build
+            inputs:
+              command: 'build'
+              projects: '**/*.csproj'
+              arguments: '-c Release'
+          - task: DotNetCoreCLI@2
+            displayName: Test
+            inputs:
+              command: 'test'
+              projects: 'Src/Tests/Tests.csproj'
+              arguments: '-c Release /p:CollectCoverage=true /p:CoverletOutputFormat=cobertura /p:Exclude=[*.Tests]* /p:CoverletOutput=$(Build.SourcesDirectory)/TestResults/Coverage/'
+              publishTestResults: true
+          - task: PublishCodeCoverageResults@1
+            displayName: 'Publish code coverage report'
+            inputs:
+              codeCoverageTool: 'Cobertura'
+              summaryFileLocation: '$(Build.SourcesDirectory)/**/coverage.cobertura.xml'
+          - task: WhiteSource Bolt@20
+            displayName: Scan for Third Party Vulnerabilities
+            condition: ne(variables['Build.Reason'], 'PullRequest')
+          - task: DotNetCoreCLI@2
+            condition: and(succeeded(), ne(variables['Build.Reason'], 'PullRequest'))
+            displayName: Publish MicroService
+            inputs:
+              command: 'publish'
+              publishWebProjects: false
+              projects: '**/Microservice.csproj'
+              arguments: '-c Release -o publish'
+              zipAfterPublish: false
+              modifyOutputPath: false
+          - task: PublishPipelineArtifact@1
+            displayName: Publish Self Contained Artifact
+            condition: and(succeeded(), ne(variables['Build.Reason'], 'PullRequest'))
+            inputs:
+              targetPath: $(System.DefaultWorkingDirectory)/publish
+              artifactName: publish
+      - job: PublishConfigFolder
+        displayName: Publish the ARM Templates in the Config Folder
+        condition: ne('${{ parameters.run_type }}', 'Code Only')
+        pool:
+          vmImage: 'ubuntu-latest'
+        steps:
+          - task: PublishPipelineArtifact@1
+            displayName: Publish Config Directory
+            condition: ne(variables['Build.Reason'], 'PullRequest')
+            inputs:
+              targetPath: $(System.DefaultWorkingDirectory)/Config
+              artifactName: Config
+
+  - stage: DevelopmentEnv
+    displayName: Development Environment
+    dependsOn: BuildTestPublish
+    condition: and(succeeded(), ne(variables['Build.Reason'], 'PullRequest'))
+    jobs:
+      - template: azure-environment-deploy.yml
+        parameters:
+          env_short_name: dev
+          azure_resource_manager_connection: AzureFunctionEventHub-DEV
+          azure_resource_group_name: "rg-azurefuncdemo-dev-usc"
+          subscription_id: "[your-sub-id]"
+          azure_devops_environment: FunctionHubDemo-DEV
+          run_type: ${{parameters.run_type}}
+
+  - stage: TestEnv
+    displayName: Test Environment
+    dependsOn: BuildTestPublish
+    condition: and(succeeded(), ne(variables['Build.Reason'], 'PullRequest'))
+    jobs:
+      - template: azure-environment-deploy.yml
+        parameters:
+          env_short_name: tst
+          azure_resource_manager_connection: AzureFunctionEventHub-TST
+          azure_resource_group_name: "rg-azurefuncdemo-tst-usc"
+          subscription_id: "[your-sub-id]"
+          azure_devops_environment: FunctionHubDemo-TST
+          run_type: ${{parameters.run_type}}
+
+  - stage: PreEnv
+    displayName: Pre-Production (UAT, Perf Test) Environment
+    dependsOn: BuildTestPublish
+    condition: and(succeeded(), ne(variables['Build.Reason'], 'PullRequest'))
+    jobs:
+      - template: azure-environment-deploy.yml
+        parameters:
+          env_short_name: pre
+          azure_resource_manager_connection: AzureFunctionEventHub-PRE
+          azure_resource_group_name: "rg-azurefuncdemo-pre-usc"
+          subscription_id: "[your-sub-id]"
+          azure_devops_environment: FunctionHubDemo-PRE
+          run_type: ${{parameters.run_type}}
+
+  - stage: ProdEnv
+    displayName: Production Environment
+    dependsOn: BuildTestPublish
+    condition: and(succeeded(), ne(variables['Build.Reason'], 'PullRequest'))
+    jobs:
+      - template: azure-environment-deploy.yml
+        parameters:
+          env_short_name: prod
+          azure_resource_manager_connection: AzureFunctionEventHub-PROD
+          azure_resource_group_name: "rg-azurefuncdemo-prod-usc"
+          subscription_id: "[your-sub-id]"
+          azure_devops_environment: FunctionHubDemo-PROD
+          run_type: ${{parameters.run_type}}

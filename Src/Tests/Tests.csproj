@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net7.0</TargetFramework>
+        <WarningsAsErrors />
+        <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+        <OutputPath>../../bin/$(Configuration)</OutputPath>
+        <NoWarn>1701;1702;</NoWarn>
+        <IsPackable>false</IsPackable>
+        <RootNamespace>Jay.FuncHubDemo.Tests</RootNamespace>
+        <AssemblyName>Jay.FuncHubDemo.Tests</AssemblyName>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+        <DefineConstants>DEBUG;TRACE</DefineConstants>
+    </PropertyGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\Microservice\Microservice.csproj" />
+    </ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="Moq" Version="4.18.4" />
+        <PackageReference Include="NUnit" Version="3.13.3" />
+        <PackageReference Include="NUnit3TestAdapter" Version="4.4.2" />
+        <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.5.0" />
+        <PackageReference Include="coverlet.msbuild" Version="3.2.0" PrivateAssets="all" />
+    </ItemGroup>
+
+</Project>

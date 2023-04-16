@@ -1,0 +1,126 @@
+parameters:
+  - name: env_short_name
+    type: string
+  - name: azure_resource_manager_connection
+    type: string
+  - name: azure_resource_group_name
+    type: string
+  - name: subscription_id
+    type: string
+  - name: azure_devops_environment
+    type: string
+  - name: run_type
+    type: string
+jobs:
+  - deployment: ConsumptionPlan
+    displayName: Deploy Consumption Plan
+    pool:
+      vmImage: 'ubuntu-latest'
+    environment: ${{parameters.azure_devops_environment}}
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+            - template: azure-function-app-plan-steps-template.yml
+              parameters:
+                env_short_name: ${{parameters.env_short_name}}
+                azure_resource_manager_connection:  ${{parameters.azure_resource_manager_connection}}
+                azure_resource_group_name: ${{parameters.azure_resource_group_name}}
+                subscription_id: ${{parameters.subscription_id}}
+                run_type:  ${{parameters.run_type}}
+                location_code: usc
+                location: Central US
+
+  - deployment: ApplicationInsights
+    displayName: Deploy Application Insights
+    environment: ${{parameters.azure_devops_environment}}
+    pool:
+      vmImage: 'ubuntu-latest'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+            - template: azure-deploy-appinsights-step-template.yml
+              parameters:
+                env_short_name: ${{parameters.env_short_name}}
+                azure_resource_manager_connection:  ${{parameters.azure_resource_manager_connection}}
+                azure_resource_group_name: ${{parameters.azure_resource_group_name}}
+                subscription_id: ${{parameters.subscription_id}}
+                run_type:  ${{parameters.run_type}}
+                location_code: usc
+                location: Central US
+
+  - deployment: EventHub
+    displayName: Deploy Event Hub Service
+    pool:
+      vmImage: 'ubuntu-latest'
+    environment: ${{parameters.azure_devops_environment}}
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+            - template: azure-eventhub-steps-template.yml
+              parameters:
+                env_short_name: ${{parameters.env_short_name}}
+                azure_resource_manager_connection:  ${{parameters.azure_resource_manager_connection}}
+                azure_resource_group_name: ${{parameters.azure_resource_group_name}}
+                subscription_id: ${{parameters.subscription_id}}
+                run_type:  ${{parameters.run_type}}
+                location_code: usc
+                location: Central US
+  - deployment: Storage
+    displayName: Deploy Storage Account
+    pool:
+      vmImage: 'ubuntu-latest'
+    environment: ${{parameters.azure_devops_environment}}
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+            - template: azure-storage-steps-template.yml
+              parameters:
+                env_short_name: ${{parameters.env_short_name}}
+                azure_resource_manager_connection:  ${{parameters.azure_resource_manager_connection}}
+                azure_resource_group_name: ${{parameters.azure_resource_group_name}}
+                subscription_id: ${{parameters.subscription_id}}
+                run_type:  ${{parameters.run_type}}
+                location_code: usc
+                location: Central US
+
+  - deployment: FunctionApp
+    displayName: Deploy Application and its Configuration
+    dependsOn:
+      - Storage
+      - EventHub
+      - ConsumptionPlan
+      - ApplicationInsights
+    pool:
+      vmImage: 'ubuntu-latest'
+    environment: ${{parameters.azure_devops_environment}}
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+            - template: azure-function-app-steps-template.yml
+              parameters:
+                env_short_name: ${{parameters.env_short_name}}
+                azure_resource_manager_connection:  ${{parameters.azure_resource_manager_connection}}
+                azure_resource_group_name: ${{parameters.azure_resource_group_name}}
+                subscription_id: ${{parameters.subscription_id}}
+                run_type:  ${{parameters.run_type}}
+                location_code: usc
+                location: Central US
+
+  - job: owaspzapscan
+    displayName: OWASP ZAP Scan
+    condition: and(succeeded(), and(ne('${{parameters.env_short_name}}', 'prod'), ne('${{parameters.env_short_name}}','test')))
+    dependsOn:
+      - FunctionApp
+    pool:
+      vmImage: 'ubuntu-latest'
+    steps:
+    - template: owasp-zap-steps-template.yml
+      parameters:
+        results: ${{parameters.env_short_name}}
+        targetUrl: 'https://func-demoapp-funchubdemo-${{parameters.env_short_name}}-usc.azurewebsites.net'
+        port: 443

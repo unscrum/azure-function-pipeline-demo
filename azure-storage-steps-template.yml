@@ -1,0 +1,30 @@
+parameters:
+  - name: env_short_name
+    type: string
+  - name: location_code
+    type: string
+  - name: azure_resource_manager_connection
+    type: string
+  - name: azure_resource_group_name
+    type: string
+  - name: subscription_id
+    type: string
+  - name: location
+    type: string
+  - name: run_type
+    type: string
+steps:
+  - task: AzureResourceManagerTemplateDeployment@3
+    displayName: Deploy Storage Account
+    condition: ne('${{ parameters.run_type }}', 'Code Only')
+    inputs:
+      deploymentScope: 'Resource Group'
+      azureResourceManagerConnection: ${{parameters.azure_resource_manager_connection}}
+      subscriptionId: ${{parameters.subscription_id}}
+      action: 'Create Or Update Resource Group'
+      resourceGroupName: ${{parameters.azure_resource_group_name}}
+      location: ${{parameters.location}}
+      templateLocation: 'Linked artifact'
+      csmFile: "$(Pipeline.Workspace)/Config/storageaccount.json"
+      overrideParameters: '-environmentCode ${{parameters.env_short_name}} -locationCode ${{parameters.location_code}}'
+      deploymentMode: "Incremental"
